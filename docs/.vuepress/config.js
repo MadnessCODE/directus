@@ -202,6 +202,14 @@ module.exports = {
 				children: [
 					{
 						type: 'page',
+						path: '/guides/migrating-from-v8',
+						title: 'Migrating from v8',
+					},
+					{
+						type: 'divider',
+					},
+					{
+						type: 'page',
 						path: '/guides/api-config',
 						title: 'API Config',
 					},
@@ -332,7 +340,7 @@ module.exports = {
 					},
 					{
 						type: 'page',
-						path: '/reference/sdk-js',
+						path: '/reference/sdk',
 						title: 'JavaScript SDK',
 					},
 					{

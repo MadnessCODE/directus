@@ -21,7 +21,7 @@ import env from '../env';
 import { PayloadService } from './payload';
 import { AuthorizationService } from './authorization';
 
-import { pick, clone, cloneDeep, merge } from 'lodash';
+import { pick, clone, cloneDeep, merge, without } from 'lodash';
 import getDefaultValue from '../utils/get-default-value';
 import { translateDatabaseError } from '../exceptions/database/translate';
 import { InvalidPayloadException, ForbiddenException } from '../exceptions';
@@ -46,8 +46,8 @@ export class ItemsService<Item extends AnyItem = AnyItem> implements AbstractSer
 	async create(data: Partial<Item>[]): Promise<PrimaryKey[]>;
 	async create(data: Partial<Item>): Promise<PrimaryKey>;
 	async create(data: Partial<Item> | Partial<Item>[]): Promise<PrimaryKey | PrimaryKey[]> {
-		const primaryKeyField = this.schema.tables[this.collection].primary;
-		const columns = Object.keys(this.schema.tables[this.collection].columns);
+		const primaryKeyField = this.schema.collections[this.collection].primary;
+		const fields = Object.keys(this.schema.collections[this.collection].fields);
 
 		let payloads: AnyItem[] = clone(toArray(data));
 
@@ -67,6 +67,7 @@ export class ItemsService<Item extends AnyItem = AnyItem> implements AbstractSer
 					action: 'create',
 					payload: payloads[i],
 					schema: this.schema,
+					database: this.knex,
 				});
 
 				if (customProcessed && customProcessed.length > 0) {
@@ -87,7 +88,7 @@ export class ItemsService<Item extends AnyItem = AnyItem> implements AbstractSer
 			payloads = await payloadService.processM2O(payloads);
 			payloads = await payloadService.processA2O(payloads);
 
-			let payloadsWithoutAliases = payloads.map((payload) => pick(payload, columns));
+			let payloadsWithoutAliases = payloads.map((payload) => pick(payload, fields));
 
 			payloadsWithoutAliases = await payloadService.processValues('create', payloadsWithoutAliases);
 
@@ -177,6 +178,7 @@ export class ItemsService<Item extends AnyItem = AnyItem> implements AbstractSer
 			action: 'create',
 			payload: payloads,
 			schema: this.schema,
+			database: this.knex,
 		});
 
 		return Array.isArray(data) ? savedPrimaryKeys : savedPrimaryKeys[0];
@@ -218,7 +220,7 @@ export class ItemsService<Item extends AnyItem = AnyItem> implements AbstractSer
 	): Promise<null | Partial<Item> | Partial<Item>[]> {
 		query = clone(query);
 
-		const primaryKeyField = this.schema.tables[this.collection].primary;
+		const primaryKeyField = this.schema.collections[this.collection].primary;
 		const keys = toArray(key);
 
 		if (keys.length === 1) {
@@ -265,8 +267,8 @@ export class ItemsService<Item extends AnyItem = AnyItem> implements AbstractSer
 		data: Partial<Item> | Partial<Item>[],
 		key?: PrimaryKey | PrimaryKey[]
 	): Promise<PrimaryKey | PrimaryKey[]> {
-		const primaryKeyField = this.schema.tables[this.collection].primary;
-		const columns = Object.keys(this.schema.tables[this.collection].columns);
+		const primaryKeyField = this.schema.collections[this.collection].primary;
+		const fields = Object.keys(this.schema.collections[this.collection].fields);
 
 		// Updating one or more items to the same payload
 		if (data && key) {
@@ -282,6 +284,7 @@ export class ItemsService<Item extends AnyItem = AnyItem> implements AbstractSer
 				action: 'update',
 				payload,
 				schema: this.schema,
+				database: this.knex,
 			});
 
 			if (customProcessed && customProcessed.length > 0) {
@@ -310,13 +313,13 @@ export class ItemsService<Item extends AnyItem = AnyItem> implements AbstractSer
 				payload = await payloadService.processM2O(payload);
 				payload = await payloadService.processA2O(payload);
 
-				let payloadWithoutAliases = pick(payload, columns);
+				let payloadWithoutAliasAndPK = pick(payload, without(fields, primaryKeyField));
 
-				payloadWithoutAliases = await payloadService.processValues('update', payloadWithoutAliases);
+				payloadWithoutAliasAndPK = await payloadService.processValues('update', payloadWithoutAliasAndPK);
 
-				if (Object.keys(payloadWithoutAliases).length > 0) {
+				if (Object.keys(payloadWithoutAliasAndPK).length > 0) {
 					try {
-						await trx(this.collection).update(payloadWithoutAliases).whereIn(primaryKeyField, keys);
+						await trx(this.collection).update(payloadWithoutAliasAndPK).whereIn(primaryKeyField, keys);
 					} catch (err) {
 						throw await translateDatabaseError(err);
 					}
@@ -361,7 +364,7 @@ export class ItemsService<Item extends AnyItem = AnyItem> implements AbstractSer
 						item: keys[index],
 						data:
 							snapshots && Array.isArray(snapshots) ? JSON.stringify(snapshots?.[index]) : JSON.stringify(snapshots),
-						delta: JSON.stringify(payloadWithoutAliases),
+						delta: JSON.stringify(payloadWithoutAliasAndPK),
 					}));
 
 					if (revisionRecords.length > 0) {
@@ -382,6 +385,7 @@ export class ItemsService<Item extends AnyItem = AnyItem> implements AbstractSer
 				action: 'update',
 				payload,
 				schema: this.schema,
+				database: this.knex,
 			});
 
 			return key;
@@ -416,7 +420,7 @@ export class ItemsService<Item extends AnyItem = AnyItem> implements AbstractSer
 	}
 
 	async updateByQuery(data: Partial<Item>, query: Query): Promise<PrimaryKey[]> {
-		const primaryKeyField = this.schema.tables[this.collection].primary;
+		const primaryKeyField = this.schema.collections[this.collection].primary;
 		const readQuery = cloneDeep(query);
 		readQuery.fields = [primaryKeyField];
 
@@ -437,7 +441,7 @@ export class ItemsService<Item extends AnyItem = AnyItem> implements AbstractSer
 	upsert(data: Partial<Item>[]): Promise<PrimaryKey[]>;
 	upsert(data: Partial<Item>): Promise<PrimaryKey>;
 	async upsert(data: Partial<Item> | Partial<Item>[]): Promise<PrimaryKey | PrimaryKey[]> {
-		const primaryKeyField = this.schema.tables[this.collection].primary;
+		const primaryKeyField = this.schema.collections[this.collection].primary;
 		const payloads = toArray(data);
 		const primaryKeys: PrimaryKey[] = [];
 
@@ -467,7 +471,7 @@ export class ItemsService<Item extends AnyItem = AnyItem> implements AbstractSer
 	delete(keys: PrimaryKey[]): Promise<PrimaryKey[]>;
 	async delete(key: PrimaryKey | PrimaryKey[]): Promise<PrimaryKey | PrimaryKey[]> {
 		const keys = toArray(key);
-		const primaryKeyField = this.schema.tables[this.collection].primary;
+		const primaryKeyField = this.schema.collections[this.collection].primary;
 
 		if (this.accountability && this.accountability.admin !== true) {
 			const authorizationService = new AuthorizationService({
@@ -486,6 +490,7 @@ export class ItemsService<Item extends AnyItem = AnyItem> implements AbstractSer
 			action: 'delete',
 			payload: null,
 			schema: this.schema,
+			database: this.knex,
 		});
 
 		await this.knex.transaction(async (trx) => {
@@ -519,13 +524,14 @@ export class ItemsService<Item extends AnyItem = AnyItem> implements AbstractSer
 			action: 'delete',
 			payload: null,
 			schema: this.schema,
+			database: this.knex,
 		});
 
 		return key;
 	}
 
 	async deleteByQuery(query: Query): Promise<PrimaryKey[]> {
-		const primaryKeyField = this.schema.tables[this.collection].primary;
+		const primaryKeyField = this.schema.collections[this.collection].primary;
 		const readQuery = cloneDeep(query);
 		readQuery.fields = [primaryKeyField];
 
@@ -549,17 +555,17 @@ export class ItemsService<Item extends AnyItem = AnyItem> implements AbstractSer
 		const record = (await this.readByQuery(query, opts)) as Partial<Item>;
 
 		if (!record) {
-			let columns = Object.values(this.schema.tables[this.collection].columns);
+			let fields = Object.entries(this.schema.collections[this.collection].fields);
 			const defaults: Record<string, any> = {};
 
 			if (query.fields && query.fields.includes('*') === false) {
-				columns = columns.filter((column) => {
-					return query.fields!.includes(column.column_name);
+				fields = fields.filter(([name]) => {
+					return query.fields!.includes(name);
 				});
 			}
 
-			for (const column of columns) {
-				defaults[column.column_name] = getDefaultValue(column);
+			for (const [name, field] of fields) {
+				defaults[name] = field.defaultValue;
 			}
 
 			return defaults as Partial<Item>;
@@ -569,7 +575,7 @@ export class ItemsService<Item extends AnyItem = AnyItem> implements AbstractSer
 	}
 
 	async upsertSingleton(data: Partial<Item>) {
-		const primaryKeyField = this.schema.tables[this.collection].primary;
+		const primaryKeyField = this.schema.collections[this.collection].primary;
 
 		const record = await this.knex.select(primaryKeyField).from(this.collection).limit(1).first();
 

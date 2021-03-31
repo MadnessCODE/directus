@@ -1,6 +1,5 @@
 <template>
 	<div>
-
 		<div class="grid">
 			<div class="field">
 				<div class="type-label">{{ $t('this_collection') }}</div>
@@ -106,11 +105,10 @@
 			<v-divider large :inline-title="false">{{ $t('sort_field') }}</v-divider>
 
 			<v-input
-				:class="{ matches: sortFieldExists }"
-				v-model="relations[0].sort_field"
-				:nullable="false"
-				:placeholder="$t('add_sort_field') + '...'"
 				db-safe
+				v-model="relations[0].sort_field"
+				:placeholder="$t('add_sort_field') + '...'"
+				:class="{ matches: sortFieldExists }"
 			>
 				<template #append v-if="fields && fields.length > 0">
 					<v-menu show-arrow placement="bottom-end">
@@ -120,14 +118,14 @@
 
 						<v-list class="monospace">
 							<v-list-item
-								v-for="item in fields"
-								:key="item.value"
-								:active="relations[0].sort_field === item.value"
-								:disabled="item.disabled"
-								@click="relations[0].sort_field = item.value"
+								v-for="field in fields"
+								:key="field.value"
+								:active="relations[0].sort_field === field.value"
+								@click="relations[0].sort_field = field.value"
+								:disabled="field.disabled"
 							>
 								<v-list-item-content>
-									{{ item.text }}
+									{{ field.text }}
 								</v-list-item-content>
 							</v-list-item>
 						</v-list>
@@ -223,9 +221,7 @@ export default defineComponent({
 			const availableCollections = computed(() => {
 				return orderBy(
 					collectionsStore.state.collections.filter((collection) => {
-						return (
-							collection.collection.startsWith('directus_') === false && collection.collection !== props.collection
-						);
+						return collection.collection.startsWith('directus_') === false;
 					}),
 					['collection'],
 					['asc']
@@ -235,7 +231,7 @@ export default defineComponent({
 			const systemCollections = computed(() => {
 				return orderBy(
 					collectionsStore.state.collections.filter((collection) => {
-						return collection.collection.startsWith('directus_') === true && collection.collection !== props.collection;
+						return collection.collection.startsWith('directus_') === true;
 					}),
 					['collection'],
 					['asc']

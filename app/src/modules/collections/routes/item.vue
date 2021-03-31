@@ -178,7 +178,7 @@
 				:collection="collection"
 				:primary-key="_primaryKey"
 				ref="revisionsDrawerDetail"
-				@revert="refresh"
+				@revert="revert"
 			/>
 			<comments-sidebar-detail
 				v-if="isNew === false && _primaryKey"
@@ -207,6 +207,8 @@ import useShortcut from '@/composables/use-shortcut';
 import { NavigationGuard } from 'vue-router';
 import { usePermissions } from '@/composables/use-permissions';
 import unsavedChanges from '@/composables/unsaved-changes';
+import { useTitle } from '@/composables/use-title';
+import { renderStringTemplate } from '@/utils/render-string-template';
 
 export default defineComponent({
 	name: 'collections-item',
@@ -300,6 +302,24 @@ export default defineComponent({
 				: i18n.t('editing_in', { collection: collectionInfo.value?.name });
 		});
 
+		const tabTitle = computed(() => {
+			let tabTitle = (collectionInfo.value?.name || '') + ' | ';
+
+			if (collectionInfo.value && collectionInfo.value.meta) {
+				if (collectionInfo.value.meta.singleton === true) {
+					return tabTitle + collectionInfo.value.name;
+				} else if (isNew.value === false && collectionInfo.value.meta.display_template) {
+					const { displayValue } = renderStringTemplate(collectionInfo.value.meta.display_template, templateValues);
+
+					if (displayValue.value !== undefined) return tabTitle + displayValue.value;
+				}
+			}
+
+			return tabTitle + title.value;
+		});
+
+		useTitle(tabTitle);
+
 		const archiveTooltip = computed(() => {
 			if (archiveAllowed.value === false) return i18n.t('not_allowed');
 			if (isArchived.value === true) return i18n.t('unarchive');
@@ -375,6 +395,7 @@ export default defineComponent({
 			isSingleton,
 			_primaryKey,
 			revisionsAllowed,
+			revert,
 		};
 
 		function useBreadcrumb() {
@@ -468,7 +489,15 @@ export default defineComponent({
 		function discardAndLeave() {
 			if (!leaveTo.value) return;
 			edits.value = {};
+			confirmLeave.value = false;
 			router.push(leaveTo.value);
+		}
+
+		function revert(values: Record<string, any>) {
+			edits.value = {
+				...edits.value,
+				...values,
+			};
 		}
 	},
 	beforeRouteLeave(to, from, next) {
