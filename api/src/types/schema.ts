@@ -9,6 +9,7 @@ type CollectionsOverview = {
 		singleton: boolean;
 		sortField: string | null;
 		note: string | null;
+		accountability: 'all' | 'activity' | null;
 		fields: {
 			[name: string]: {
 				field: string;
@@ -19,6 +20,7 @@ type CollectionsOverview = {
 				scale: number | null;
 				special: string[];
 				note: string | null;
+				alias: boolean;
 			};
 		};
 	};

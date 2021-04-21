@@ -6,13 +6,13 @@ import grant from 'grant';
 import getEmailFromProfile from '../utils/get-email-from-profile';
 import { InvalidPayloadException } from '../exceptions/invalid-payload';
 import ms from 'ms';
-import cookieParser from 'cookie-parser';
 import env from '../env';
 import { UsersService, AuthenticationService } from '../services';
 import grantConfig from '../grant';
-import { RouteNotFoundException } from '../exceptions';
+import { InvalidCredentialsException, RouteNotFoundException, ServiceUnavailableException } from '../exceptions';
 import { respond } from '../middleware/respond';
 import { toArray } from '../utils/to-array';
+import emitter, { emitAsyncSafe } from '../emitter';
 
 const router = Router();
 
@@ -77,7 +77,6 @@ router.post(
 
 router.post(
 	'/refresh',
-	cookieParser(),
 	asyncHandler(async (req, res, next) => {
 		const accountability = {
 			ip: req.ip,
@@ -126,7 +125,6 @@ router.post(
 
 router.post(
 	'/logout',
-	cookieParser(),
 	asyncHandler(async (req, res, next) => {
 		const accountability = {
 			ip: req.ip,
@@ -232,6 +230,29 @@ router.get(
 			req.session.redirect = req.query.redirect as string;
 		}
 
+		let hookPayload = {
+			provider: req.params.provider,
+			redirect: req.query?.redirect,
+		};
+
+		emitAsyncSafe(`oauth.${req.params.provider}.redirect`, {
+			event: `oauth.${req.params.provider}.redirect`,
+			action: 'redirect',
+			schema: req.schema,
+			payload: hookPayload,
+			accountability: req.accountability,
+			user: null,
+		});
+
+		await emitter.emitAsync(`oauth.${req.params.provider}.redirect.before`, {
+			event: `oauth.${req.params.provider}.redirect.before`,
+			action: 'redirect',
+			schema: req.schema,
+			payload: hookPayload,
+			accountability: req.accountability,
+			user: null,
+		});
+
 		next();
 	})
 );
@@ -254,13 +275,60 @@ router.get(
 			schema: req.schema,
 		});
 
-		const email = getEmailFromProfile(req.params.provider, req.session.grant.response?.profile);
+		let authResponse: { accessToken: any; refreshToken: any; expires: any; id?: any };
 
-		req.session?.destroy(() => {});
+		let hookPayload = req.session.grant.response;
 
-		const { accessToken, refreshToken, expires } = await authenticationService.authenticate({
-			email,
+		await emitter.emitAsync(`oauth.${req.params.provider}.login.before`, hookPayload, {
+			event: `oauth.${req.params.provider}.login.before`,
+			action: 'oauth.login',
+			schema: req.schema,
+			payload: hookPayload,
+			accountability: accountability,
+			status: 'pending',
+			user: null,
 		});
+
+		const emitStatus = (status: 'fail' | 'success') => {
+			emitAsyncSafe(`oauth.${req.params.provider}.login`, hookPayload, {
+				event: `oauth.${req.params.provider}.login`,
+				action: 'oauth.login',
+				schema: req.schema,
+				payload: hookPayload,
+				accountability: accountability,
+				status,
+				user: null,
+			});
+		};
+
+		try {
+			const email = getEmailFromProfile(req.params.provider, req.session.grant.response?.profile);
+
+			req.session?.destroy(() => {});
+
+			authResponse = await authenticationService.authenticate({
+				email,
+			});
+		} catch (error) {
+			emitStatus('fail');
+			if (redirect) {
+				let reason = 'UNKNOWN_EXCEPTION';
+
+				if (error instanceof ServiceUnavailableException) {
+					reason = 'SERVICE_UNAVAILABLE';
+				} else if (error instanceof InvalidCredentialsException) {
+					reason = 'INVALID_USER';
+				}
+
+				return res.redirect(`${redirect.split('?')[0]}?reason=${reason}`);
+			}
+
+			throw error;
+		}
+
+		const { accessToken, refreshToken, expires } = authResponse;
+
+		emitStatus('success');
 
 		if (redirect) {
 			res.cookie('directus_refresh_token', refreshToken, {

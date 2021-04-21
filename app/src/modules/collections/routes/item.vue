@@ -11,12 +11,12 @@
 		</template>
 
 		<template #title v-else-if="isNew === false && collectionInfo.meta && collectionInfo.meta.display_template">
-			<v-skeleton-loader class="title-loader" type="text" v-if="loading" />
+			<v-skeleton-loader class="title-loader" type="text" v-if="loading || templateDataLoading" />
 
 			<h1 class="type-title" v-else>
 				<render-template
 					:collection="collectionInfo.collection"
-					:item="templateValues"
+					:item="templateData"
 					:template="collectionInfo.meta.display_template"
 				/>
 			</h1>
@@ -142,6 +142,7 @@
 		</template>
 
 		<template #navigation>
+			<collections-navigation-search />
 			<collections-navigation />
 		</template>
 
@@ -174,9 +175,10 @@
 				<div class="page-description" v-html="marked($t('page_help_collections_item'))" />
 			</sidebar-detail>
 			<revisions-drawer-detail
-				v-if="isNew === false && _primaryKey && revisionsAllowed"
+				v-if="isNew === false && _primaryKey && revisionsAllowed && accountabilityScope === 'all'"
 				:collection="collection"
 				:primary-key="_primaryKey"
+				:scope="accountabilityScope"
 				ref="revisionsDrawerDetail"
 				@revert="revert"
 			/>
@@ -190,9 +192,10 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, computed, toRefs, ref, onBeforeUnmount, onBeforeMount } from '@vue/composition-api';
+import { defineComponent, computed, toRefs, ref } from '@vue/composition-api';
 import Vue from 'vue';
 
+import CollectionsNavigationSearch from '../components/navigation-search.vue';
 import CollectionsNavigation from '../components/navigation.vue';
 import router from '@/router';
 import CollectionsNotFound from './not-found.vue';
@@ -209,11 +212,13 @@ import { usePermissions } from '@/composables/use-permissions';
 import unsavedChanges from '@/composables/unsaved-changes';
 import { useTitle } from '@/composables/use-title';
 import { renderStringTemplate } from '@/utils/render-string-template';
+import useTemplateData from '@/composables/use-template-data';
 
 export default defineComponent({
 	name: 'collections-item',
 	components: {
 		CollectionsNavigation,
+		CollectionsNavigationSearch,
 		CollectionsNotFound,
 		RevisionsDrawerDetail,
 		CommentsSidebarDetail,
@@ -241,7 +246,9 @@ export default defineComponent({
 
 		const revisionsDrawerDetail = ref<Vue | null>(null);
 
-		const { info: collectionInfo, defaults, primaryKeyField, isSingleton } = useCollection(collection);
+		const { info: collectionInfo, defaults, primaryKeyField, isSingleton, accountabilityScope } = useCollection(
+			collection
+		);
 
 		const {
 			isNew,
@@ -260,6 +267,8 @@ export default defineComponent({
 			refresh,
 			validationErrors,
 		} = useItem(collection, primaryKey);
+
+		const { templateData, loading: templateDataLoading } = useTemplateData(collectionInfo, primaryKey);
 
 		const hasEdits = computed(() => Object.keys(edits.value).length > 0);
 
@@ -289,13 +298,6 @@ export default defineComponent({
 		const confirmLeave = ref(false);
 		const leaveTo = ref<string | null>(null);
 
-		const templateValues = computed(() => {
-			return {
-				...(item.value || {}),
-				...edits.value,
-			};
-		});
-
 		const title = computed(() => {
 			return isNew.value
 				? i18n.t('creating_in', { collection: collectionInfo.value?.name })
@@ -309,7 +311,7 @@ export default defineComponent({
 				if (collectionInfo.value.meta.singleton === true) {
 					return tabTitle + collectionInfo.value.name;
 				} else if (isNew.value === false && collectionInfo.value.meta.display_template) {
-					const { displayValue } = renderStringTemplate(collectionInfo.value.meta.display_template, templateValues);
+					const { displayValue } = renderStringTemplate(collectionInfo.value.meta.display_template, templateData);
 
 					if (displayValue.value !== undefined) return tabTitle + displayValue.value;
 				}
@@ -372,7 +374,8 @@ export default defineComponent({
 			saveAndStay,
 			saveAndAddNew,
 			saveAsCopyAndNavigate,
-			templateValues,
+			templateData,
+			templateDataLoading,
 			archiveTooltip,
 			breadcrumb,
 			title,
@@ -396,6 +399,7 @@ export default defineComponent({
 			_primaryKey,
 			revisionsAllowed,
 			revert,
+			accountabilityScope,
 		};
 
 		function useBreadcrumb() {
@@ -431,7 +435,7 @@ export default defineComponent({
 				if (props.primaryKey === '+') {
 					// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 					const newPrimaryKey = savedItem[primaryKeyField.value!.field];
-					router.replace(`/collections/${props.collection}/${newPrimaryKey}`);
+					router.replace(`/collections/${props.collection}/${encodeURIComponent(newPrimaryKey)}`);
 				}
 			} catch {
 				// Save shows unexpected error dialog
@@ -457,7 +461,7 @@ export default defineComponent({
 		async function saveAsCopyAndNavigate() {
 			try {
 				const newPrimaryKey = await saveAsCopy();
-				if (newPrimaryKey) router.push(`/collections/${props.collection}/${newPrimaryKey}`);
+				if (newPrimaryKey) router.push(`/collections/${props.collection}/${encodeURIComponent(newPrimaryKey)}`);
 			} catch {
 				// Save shows unexpected error dialog
 			}

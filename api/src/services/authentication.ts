@@ -48,7 +48,7 @@ export class AuthenticationService {
 		const user = await database
 			.select('id', 'password', 'role', 'tfa_secret', 'status')
 			.from('directus_users')
-			.where({ email })
+			.whereRaw('LOWER(??) = ?', ['email', email.toLowerCase()])
 			.first();
 
 		await emitter.emitAsync('auth.login.before', hookPayload, {
@@ -133,7 +133,7 @@ export class AuthenticationService {
 		await database('directus_sessions').delete().where('expires', '<', new Date());
 
 		if (this.accountability) {
-			await this.activityService.create({
+			await this.activityService.createOne({
 				action: Action.AUTHENTICATE,
 				user: user.id,
 				ip: this.accountability.ip,

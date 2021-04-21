@@ -14,10 +14,16 @@ router.post(
 			schema: req.schema,
 		});
 
-		const collectionKey = await collectionsService.create(req.body);
-		const record = await collectionsService.readByKey(collectionKey);
+		if (Array.isArray(req.body)) {
+			const collectionKey = await collectionsService.createMany(req.body);
+			const records = await collectionsService.readMany(collectionKey);
+			res.locals.payload = { data: records || null };
+		} else {
+			const collectionKey = await collectionsService.createOne(req.body);
+			const record = await collectionsService.readOne(collectionKey);
+			res.locals.payload = { data: record || null };
+		}
 
-		res.locals.payload = { data: record || null };
 		return next();
 	}),
 	respond
@@ -51,11 +57,8 @@ router.get(
 			accountability: req.accountability,
 			schema: req.schema,
 		});
-		const collectionKey = req.params.collection.includes(',')
-			? req.params.collection.split(',')
-			: req.params.collection;
 
-		const collection = await collectionsService.readByKey(collectionKey as any);
+		const collection = await collectionsService.readOne(req.params.collection);
 		res.locals.payload = { data: collection || null };
 
 		return next();
@@ -70,13 +73,10 @@ router.patch(
 			accountability: req.accountability,
 			schema: req.schema,
 		});
-		const collectionKey = req.params.collection.includes(',')
-			? req.params.collection.split(',')
-			: req.params.collection;
-		await collectionsService.update(req.body, collectionKey as any);
+		await collectionsService.updateOne(req.params.collection, req.body);
 
 		try {
-			const collection = await collectionsService.readByKey(collectionKey as any);
+			const collection = await collectionsService.readOne(req.params.collection);
 			res.locals.payload = { data: collection || null };
 		} catch (error) {
 			if (error instanceof ForbiddenException) {
@@ -99,11 +99,7 @@ router.delete(
 			schema: req.schema,
 		});
 
-		const collectionKey = req.params.collection.includes(',')
-			? req.params.collection.split(',')
-			: req.params.collection;
-
-		await collectionsService.delete(collectionKey as any);
+		await collectionsService.deleteOne(req.params.collection);
 
 		return next();
 	}),

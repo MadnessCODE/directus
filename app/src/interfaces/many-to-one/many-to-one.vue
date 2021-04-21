@@ -69,6 +69,7 @@
 			:collection="relatedCollection.collection"
 			:primary-key="currentPrimaryKey"
 			:edits="edits"
+			:circular-field="relation.one_field"
 			@input="stageEdits"
 		/>
 
@@ -233,7 +234,7 @@ export default defineComponent({
 				try {
 					const endpoint = relatedCollection.value.collection.startsWith('directus_')
 						? `/${relatedCollection.value.collection.substring(9)}/${props.value}`
-						: `/items/${relatedCollection.value.collection}/${props.value}`;
+						: `/items/${relatedCollection.value.collection}/${encodeURIComponent(props.value)}`;
 
 					const response = await api.get(endpoint, {
 						params: {
@@ -437,6 +438,10 @@ export default defineComponent({
 <style lang="scss" scoped>
 .many-to-one {
 	position: relative;
+
+	::v-deep .v-input .append {
+		display: flex;
+	}
 }
 
 .v-skeleton-loader {
@@ -447,6 +452,7 @@ export default defineComponent({
 .preview {
 	display: block;
 	flex-grow: 1;
+	overflow: hidden;
 }
 
 .expand {

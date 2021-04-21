@@ -84,6 +84,7 @@ validationError:
   nnull: Value can't be null
   required: Value is required
   unique: Value has to be unique
+  regex: Value doesn't have the correct format
 all_access: All Access
 no_access: No Access
 use_custom: Use Custom
@@ -149,6 +150,11 @@ uuid: UUID
 hash: Hash
 not_available_for_type: Not Available for this Type
 create_translations: Create Translations
+auto_refresh: Auto Refresh
+refresh_interval: Refresh Interval
+no_refresh: Do not refresh
+refresh_interval_seconds: Refresh Instantly | Every Second | Every {seconds} Seconds
+refresh_interval_minutes: Every Minute | Every {minutes} Minutes
 auto_generate: Auto-Generate
 this_will_auto_setup_fields_relations: This will automatically setup all required fields and relations.
 click_here: Click here
@@ -157,7 +163,9 @@ click_to_manage_translated_fields: >-
   There are no translated fields yet. Click here to create them. | There is one translated field. Click here to manage
   it. | There are {count} translated fields. Click here to manage them.
 fields_group: Fields Group
+no_collections_found: No collections found.
 new_data_alert: 'The following will be created within your Data Model:'
+search_collection: Search Collection...
 new_field: 'New Field'
 new_collection: 'New Collection'
 add_m2o_to_collection: 'Add Many-to-One to "{collection}"'
@@ -224,7 +232,7 @@ item_delete_success: Item Deleted | Items Deleted
 this_collection: This Collection
 related_collection: Related Collection
 related_collections: Related Collections
-translations_collection: Translations Collection
+translations_collection: Translation Collection
 languages_collection: Languages Collection
 export_data: Export Data
 format: Format
@@ -517,6 +525,20 @@ toggle: Toggle
 icon_on: Icon On
 icon_off: Icon Off
 label: Label
+image_url: Image Url
+alt_text: Alternative Text
+media: Media
+width: Width
+height: Height
+source: Source
+url_placeholder: Enter an url...
+display_text: Display Text
+display_text_placeholder: Enter a display text...
+tooltip: Tooltip
+tooltip_placeholder: Enter a tooltip...
+open_link_in: Open link in
+new_tab: New tab
+current_tab: Current tab
 wysiwyg_options:
   aligncenter: Align Center
   alignjustify: Align Justify
@@ -536,10 +558,10 @@ wysiwyg_options:
   bullist: Bullet List
   numlist: Numbered List
   hr: Horizontal Rule
-  link: Link
+  link: Add/Edit Link
   unlink: Remove Link
-  media: Add Media
-  image: Add Image
+  media: Add/Edit Media
+  image: Add/Edit Image
   copy: Copy
   cut: Cut
   paste: Paste
@@ -561,7 +583,7 @@ wysiwyg_options:
   selectall: Select All
   table: Table
   visualaid: View invisible elements
-  code: View Source
+  source_code: Edit Source Code
   fullscreen: Full Screen
   directionality: Directionality
 dropdown: Dropdown
@@ -582,10 +604,11 @@ settings_project: Project Settings
 settings_webhooks: Webhooks
 settings_presets: Presets & Bookmarks
 scope: Scope
+select: Select...
 layout: Layout
 tree_view: Tree View
 changes_are_permanent: Changes are permanent
-preset_name_placeholder: Name of bookmark...
+preset_name_placeholder: Serves as default when empty...
 preset_search_placeholder: Search query...
 editing_preset: Editing Preset
 layout_preview: Layout Preview
@@ -666,6 +689,7 @@ fields:
     archive_value: Archive Value
     unarchive_value: Unarchive Value
     sort_field: Sort Field
+    accountability: Activity & Revision Tracking
   directus_files:
     title: Title
     description: Description
@@ -739,6 +763,11 @@ fields:
     users: Users in Role
     module_list: Module Navigation
     collection_list: Collection Navigation
+field_options:
+  directus_collections:
+    track_activity_revisions: Track Activity & Revisions
+    only_track_activity: Only Track Activity
+    do_not_track_anything: Do Not Track Anything
 no_fields_in_collection: 'There are no fields in "{collection}" yet'
 do_nothing: Do Nothing
 generate_and_save_uuid: Generate and Save UUID
@@ -972,8 +1001,8 @@ interfaces:
     trim_label: Trim the start and end
     mask: Masked
     mask_label: Hide the real value
-    nullable: Nullable
-    nullable_label: Save empty value as NULL
+    clear: Cleared Value
+    clear_label: Save as empty string
   textarea:
     textarea: Textarea
     description: Enter multiline plain-text

@@ -469,7 +469,7 @@ export default defineComponent({
 							field: field.field,
 						},
 						sortable:
-							['json', 'o2m', 'm2o', 'm2a', 'file', 'files', 'alias', 'presentation', 'translations'].includes(
+							['json', 'o2m', 'm2o', 'm2m', 'm2a', 'file', 'files', 'alias', 'presentation', 'translations'].includes(
 								field.type
 							) === false,
 					}));
@@ -537,7 +537,7 @@ export default defineComponent({
 					const primaryKey = item[primaryKeyField.value!.field];
 
 					// eslint-disable-next-line @typescript-eslint/no-empty-function
-					router.push(`/collections/${collection.value}/${primaryKey}`, () => {});
+					router.push(`/collections/${collection.value}/${encodeURIComponent(primaryKey)}`, () => {});
 				}
 			}
 

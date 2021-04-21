@@ -11,7 +11,6 @@ add_field: Adicionar Campo
 role_name: Nome do cargo
 db_only_click_to_configure: 'Apenas o banco de dados: clique para configurar'
 show_archived_items: Mostrar itens arquivados
-edited: Editado
 required: Obrigatório
 required_for_app_access: Obrigatório para o Acesso ao Aplicativo
 requires_value: Requer valor
@@ -512,6 +511,8 @@ toggle: Alternar
 icon_on: Ícone ligado
 icon_off: Ícone desligado
 label: Rótulo
+width: Largura
+height: Altura
 wysiwyg_options:
   aligncenter: Alinhar ao centro
   alignjustify: Justificar
@@ -531,10 +532,7 @@ wysiwyg_options:
   bullist: Lista de itens
   numlist: Lista numerada
   hr: Linha Horizontal
-  link: Link
   unlink: Excluir Link
-  media: Adicionar mídia
-  image: Adicionar Imagem
   copy: Copiar
   cut: Recortar
   paste: Colar
@@ -556,7 +554,6 @@ wysiwyg_options:
   selectall: Selecionar todos
   table: Tabela
   visualaid: Ver elementos invisíveis
-  code: Ver Fonte
   fullscreen: Tela cheia
   directionality: Direcionalidade
 dropdown: Seleção
@@ -580,7 +577,6 @@ scope: Escopo
 layout: Layout
 tree_view: Exibição em Árvore
 changes_are_permanent: As alterações são permanentes
-preset_name_placeholder: Nome do marcador...
 preset_search_placeholder: Termos da pesquisa...
 editing_preset: Editando predefinição
 layout_preview: Pré-visualização do Layout
@@ -941,7 +937,6 @@ interfaces:
     trim_label: Aparar o início e fim
     mask: Mascarado
     mask_label: Ocultar o valor real
-    nullable_label: Salvar valor vazio como NULO
   textarea:
     textarea: Área de texto
     description: Insira texto puro de múltiplas linhas
